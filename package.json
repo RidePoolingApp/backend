@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-		"build" : "npx prisma generate & tsc -b"
+    "build": "npx prisma generate & tsc -b"
   },
   "repository": {
     "type": "git",
@@ -20,7 +20,10 @@
   },
   "homepage": "https://github.com/RidePoolingApp/backend#readme",
   "dependencies": {
-    "prisma": "^6.14.0",
+    "@prisma/client": "^6.14.0",
     "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "prisma": "^6.14.0"
   }
 }
