@@ -13,123 +13,76 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-// model User {
-//   id        Int      @id @default(autoincrement())
-//   name      String
-//   email     String   @unique
-//   phone     String   @unique 
-//   driver    Driver?  
-//   passenger Passenger?
-// }
-//  model Car {
-//   id        Int      @id @default(autoincrement())
-//   model     String
-//   seats  Int
-//   LuggageRack Boolean
-//   color String
-//   carno String @unique
-//   driverId    Int?
-//   driver      Driver?  @relation(fields: [driverId], references: [id])
-// }
-// model Driver {
-//   id            Int      @id @default(autoincrement())
-//   seatsavailable Int
-//   source       String
-//   destination  String
-//   Driver          User   @relation(fields: [userId], references: [id]) 
-//   userId        Int      @unique
-//   cars         Car[] 
-//   rides        Ride[]   
-  
-// }
-// model Passenger {
-//   id      Int   @id @default(autoincrement())
-//   userId  Int
-//   user    User  @relation(fields: [userId], references: [id])
-//   rideId  Int
-//   ride    Ride  @relation(fields: [rideId], references: [id])
-// }
 
-// model Ride {
-//   id          Int         @id @default(autoincrement())
-//   driverId    Int
-//   driver      Driver      @relation(fields: [driverId], references: [id])
-//   carId       Int
-//   car         Car         @relation(fields: [carId], references: [id])
-//   source      String
-//   destination String
-//   date        DateTime
-//   seats       Int
-//   passengers  Passenger[] // all passengers who booked this ride
-// }
 model User {
-  id         Int          @id @default(autoincrement())
+  id         Int         @id @default(autoincrement())
   name       String
-  email      String       @unique
-  phone      String       @unique
+  email      String      @unique
+  phone      String      @unique
   driver     Driver?
-  passengers Passenger[]  // One user can be a passenger in many rides
+  passengers Passenger[] // One user can be a passenger in many rides
 }
 
 model Car {
-  id          Int      @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   model       String
   seats       Int
   LuggageRack Boolean
   color       String
-  carno       String   @unique
+  carno       String  @unique
   driverId    Int?
-  driver      Driver?  @relation(fields: [driverId], references: [id])
+  driver      Driver? @relation(fields: [driverId], references: [id])
   rides       Ride[]
 }
 
 model Driver {
-  id             Int      @id @default(autoincrement())
+  id             Int    @id @default(autoincrement())
   seatsavailable Int
   source         String
   destination    String
-  userId         Int      @unique
-  Driver         User     @relation(fields: [userId], references: [id])
+  userId         Int    @unique
+  Driver         User   @relation(fields: [userId], references: [id])
   cars           Car[]
-  rides          Ride[]   // One driver can host many rides
+  rides          Ride[] // One driver can host many rides
 }
 
 model Passenger {
-  id       Int      @id @default(autoincrement())
+  id       Int       @id @default(autoincrement())
   userId   Int
-  user     User     @relation(fields: [userId], references: [id])
-  rides    Ride[]   @relation("PassengerRides") // Many-to-many
-  bookings  Booking[]
+  user     User      @relation(fields: [userId], references: [id])
+  rides    Ride[]    @relation("PassengerRides") // Many-to-many
+  bookings Booking[]
 }
 
 model Ride {
-  id          Int         @id @default(autoincrement())
-  driverId    Int
-  driver      Driver      @relation(fields: [driverId], references: [id])
-  carId       Int
-  car         Car         @relation(fields: [carId], references: [id])
-  source      String
-  destination String
-  date        DateTime
-  seats       Int
+  id             Int         @id @default(autoincrement())
+  driverId       Int
+  driver         Driver      @relation(fields: [driverId], references: [id])
+  carId          Int
+  car            Car         @relation(fields: [carId], references: [id])
+  source         String
+  destination    String
+  date           DateTime
+  seats          Int
   availableSeats Int
-  perSeatPrice Float
-  bookings     Booking[] // <-- Add this line
+  perSeatPrice   Float
+  bookings       Booking[] // <-- Add this line
   // Many-to-many relation with Passenger
-  passengers  Passenger[] @relation("PassengerRides")
+  passengers     Passenger[] @relation("PassengerRides")
 }
-model Booking {
-  id            Int       @id @default(autoincrement())
-  rideId        Int
-  passengerId   Int
-  seatsBooked   Int       // Number of seats booked by this passenger
-  totalPrice    Float     // seatsBooked × perSeatPrice from Ride
-  status        BookingStatus @default(PENDING)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
 
-  ride          Ride      @relation(fields: [rideId], references: [id])
-  passenger     Passenger @relation(fields: [passengerId], references: [id])
+model Booking {
+  id          Int           @id @default(autoincrement())
+  rideId      Int
+  passengerId Int
+  seatsBooked Int // Number of seats booked by this passenger
+  totalPrice  Float // seatsBooked × perSeatPrice from Ride
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  ride      Ride      @relation(fields: [rideId], references: [id])
+  passenger Passenger @relation(fields: [passengerId], references: [id])
 }
 
 enum BookingStatus {
@@ -137,5 +90,3 @@ enum BookingStatus {
   CONFIRMED
   CANCELLED
 }
-
-     
