@@ -1,12 +1,8 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -14,79 +10,227 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id         Int         @id @default(autoincrement())
-  name       String
-  email      String      @unique
-  phone      String      @unique
-  driver     Driver?
-  passengers Passenger[] // One user can be a passenger in many rides
+/// ENUMERATIONS for status fields across the application
+enum UserRole {
+  PASSENGER
+  DRIVER
+  ADMIN
 }
 
-model Car {
-  id          Int     @id @default(autoincrement())
-  model       String
-  seats       Int
-  LuggageRack Boolean
-  color       String
-  carno       String  @unique
-  driverId    Int?
-  driver      Driver? @relation(fields: [driverId], references: [id])
-  rides       Ride[]
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
-model Driver {
-  id             Int    @id @default(autoincrement())
-  seatsavailable Int
-  source         String
-  destination    String
-  userId         Int    @unique
-  Driver         User   @relation(fields: [userId], references: [id])
-  cars           Car[]
-  rides          Ride[] // One driver can host many rides
+enum VehicleType {
+  HATCHBACK
+  SEDAN
+  SUV
+  LUXURY
 }
 
-model Passenger {
-  id       Int       @id @default(autoincrement())
-  userId   Int
-  user     User      @relation(fields: [userId], references: [id])
-  rides    Ride[]    @relation("PassengerRides") // Many-to-many
-  bookings Booking[]
-}
-
-model Ride {
-  id             Int         @id @default(autoincrement())
-  driverId       Int
-  driver         Driver      @relation(fields: [driverId], references: [id])
-  carId          Int
-  car            Car         @relation(fields: [carId], references: [id])
-  source         String
-  destination    String
-  date           DateTime
-  seats          Int
-  availableSeats Int
-  perSeatPrice   Float
-  bookings       Booking[] // <-- Add this line
-  // Many-to-many relation with Passenger
-  passengers     Passenger[] @relation("PassengerRides")
-}
-
-model Booking {
-  id          Int           @id @default(autoincrement())
-  rideId      Int
-  passengerId Int
-  seatsBooked Int // Number of seats booked by this passenger
-  totalPrice  Float // seatsBooked × perSeatPrice from Ride
-  status      BookingStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  ride      Ride      @relation(fields: [rideId], references: [id])
-  passenger Passenger @relation(fields: [passengerId], references: [id])
+enum RideStatus {
+  SEARCHING_FOR_PASSENGERS /// Driver has set a route and is waiting for bookings
+  IN_PROGRESS /// At least one passenger has been picked up
+  COMPLETED /// All passengers have been dropped off
+  CANCELLED /// Driver cancelled the entire trip
 }
 
 enum BookingStatus {
+  REQUESTED /// Passenger has booked, waiting for driver confirmation/pickup
+  ACCEPTED /// Driver has accepted the booking
+  PICKED_UP
+  DROPPED_OFF
+  CANCELLED /// Passenger cancelled their specific booking
+}
+
+enum PaymentStatus {
   PENDING
-  CONFIRMED
-  CANCELLED
+  SUCCESSFUL
+  FAILED
+}
+
+enum ReviewType {
+  PASSENGER_TO_DRIVER
+  DRIVER_TO_PASSENGER
+}
+
+/// MODELS
+
+/// Represents any user in the system, can be a Passenger or a Driver
+model User {
+  id              String   @id @default(cuid())
+  phone           String   @unique
+  name            String
+  email           String?  @unique
+  profileImageUrl String?
+  role            UserRole @default(PASSENGER)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // A user can be a driver (one-to-one)
+  driverProfile   Driver?
+  // A user can be a passenger in many rides
+  bookings        RidePassenger[] @relation("PassengerBookings")
+  // Reviews a user has given
+  reviewsGiven    Review[]        @relation("Reviewer")
+  // Reviews a user has received
+  reviewsReceived Review[]        @relation("Reviewee")
+
+  @@map("users")
+}
+
+/// Contains driver-specific information and is linked to a User account
+model Driver {
+  id                 String             @id @default(cuid())
+  isAvailable        Boolean            @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+  currentLocationLat Float?
+  currentLocationLng Float?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relation to the base User model (one-to-one)
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
+
+  // A driver has one primary vehicle
+  vehicle   Vehicle?
+  // A driver has multiple documents for verification
+  documents DriverDocument[]
+  // A driver can conduct many rides
+  rides     Ride[]
+
+  @@map("drivers")
+}
+
+/// Vehicle information for a specific driver
+model Vehicle {
+  id           String      @id @default(cuid())
+  make         String
+  model        String
+  year         Int
+  color        String
+  licensePlate String      @unique
+  type         VehicleType
+
+  // Relation to the Driver model (one-to-one)
+  driver   Driver @relation(fields: [driverId], references: [id])
+  driverId String @unique
+
+  @@map("vehicles")
+}
+
+/// Documents for driver verification
+model DriverDocument {
+  id         String  @id @default(cuid())
+  type       String // e.g., "DRIVING_LICENSE", "VEHICLE_REGISTRATION"
+  url        String // URL to the stored document (e.g., in S3)
+  isVerified Boolean @default(false)
+
+  driver   Driver @relation(fields: [driverId], references: [id])
+  driverId String
+
+  @@map("driver_documents")
+}
+
+/// Represents the entire trip taken by a driver's vehicle. It can contain multiple passengers.
+model Ride {
+  id                String     @id @default(cuid())
+  status            RideStatus @default(SEARCHING_FOR_PASSENGERS)
+  startTime         DateTime?
+  endTime           DateTime?
+  estimatedDistance Float? // in kilometers
+  estimatedDuration Int? // in minutes
+
+  // The overall route for the driver
+  startLocationLat Float
+  startLocationLng Float
+  endLocationLat   Float
+  endLocationLng   Float
+
+  // Relation to the driver conducting the ride
+  driver   Driver @relation(fields: [driverId], references: [id])
+  driverId String
+
+  // This ride is composed of one or more passenger bookings
+  passengers RidePassenger[]
+
+  createdAt DateTime @default(now())
+
+  @@map("rides")
+}
+
+/// Join table connecting a User (passenger) to a specific Ride. This is a single booking.
+model RidePassenger {
+  id     String        @id @default(cuid())
+  status BookingStatus @default(REQUESTED)
+  otp    String // Boarding OTP for this passenger
+  fare   Decimal       @db.Decimal(10, 2)
+
+  // Passenger-specific pickup and dropoff points
+  pickupLocationLat  Float
+  pickupLocationLng  Float
+  dropoffLocationLat Float
+  dropoffLocationLng Float
+
+  // Relation to the overall ride
+  ride   Ride   @relation(fields: [rideId], references: [id])
+  rideId String
+
+  // Relation to the user who is the passenger
+  passenger   User   @relation("PassengerBookings", fields: [passengerId], references: [id])
+  passengerId String
+
+  // A booking can have one payment record
+  payment Payment?
+  // A booking can have reviews associated with it
+  reviews Review[]
+
+  createdAt DateTime @default(now())
+
+  @@map("ride_passengers")
+}
+
+/// Represents a payment transaction for a single booking
+model Payment {
+  id               String        @id @default(cuid())
+  amount           Decimal       @db.Decimal(10, 2)
+  status           PaymentStatus @default(PENDING)
+  gatewayPaymentId String? // e.g., Stripe or Razorpay charge ID
+  method           String? // e.g., "upi", "card"
+
+  // Relation to the specific booking this payment is for
+  booking   RidePassenger @relation(fields: [bookingId], references: [id])
+  bookingId String        @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payments")
+}
+
+/// Represents a review given after a ride
+model Review {
+  id         String     @id @default(cuid())
+  rating     Int // Rating from 1 to 5
+  comment    String?
+  reviewType ReviewType
+
+  // The booking this review is associated with
+  booking   RidePassenger @relation(fields: [bookingId], references: [id])
+  bookingId String
+
+  // Who gave the review
+  reviewer   User   @relation("Reviewer", fields: [reviewerId], references: [id])
+  reviewerId String
+
+  // Who received the review
+  reviewee   User   @relation("Reviewee", fields: [revieweeId], references: [id])
+  revieweeId String
+
+  createdAt DateTime @default(now())
+
+  @@map("reviews")
 }
