@@ -64,6 +64,7 @@ model User {
   phone           String   @unique
   name            String
   email           String?  @unique
+  password        String? // hashed password
   profileImageUrl String?
   role            UserRole @default(PASSENGER)
   createdAt       DateTime @default(now())
