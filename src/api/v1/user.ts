@@ -1,57 +1,16 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import express, {
-  type NextFunction,
-  type Response,
-  type Request,
-} from "express";
+import express from "express";
 import cors from "cors";
-import { loginSchema, signUpSchema } from "../../../types/user";
 import prisma from "../../../services/db";
+import { verifySignUpPayload, verifyUser } from "../../middlewares/user";
+
 const app = express();
-
 app.use(express.json());
-
 app.use(cors());
 
-const getUserId = async (req: Request, res: Response, next: NextFunction) => {
-  const { email } = req.body;
-  const user = await prisma.user.findFirst({
-    where: {
-      email,
-    },
-    select: {
-      id: true,
-    },
-  });
-  req.body.userId = user?.id;
-  next();
-};
-
-const verifyType = async (req: Request, res: Response, next: NextFunction) => {
-  const parsedSchema = signUpSchema.safeParse(req.body);
-  if (!parsedSchema.success) {
-    return res.status(400).json({ message: "Invalid request body" });
-  }
-
-  req.body = parsedSchema.data;
-
-  next();
-};
-
-const verifyLoginData = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const parsedSchema = loginSchema.safeParse(req.body);
-  if (!parsedSchema.success) {
-    return res.status(400).json({ message: "Invalid request body" });
-  }
-  next();
-};
-
-app.post("/signup", verifyType, async (req, res) => {
+//signup handler
+app.post("/signup", verifySignUpPayload, async (req, res) => {
   const payload = req.body;
   const { name, phone, email } = payload;
   try {
@@ -95,10 +54,12 @@ app.post("/signup", verifyType, async (req, res) => {
   }
 });
 
-app.post("/login", verifyLoginData, getUserId, async (req, res) => {
-  const { userId } = await req.body;
+//login handler
+app.post("/login", verifyUser, async (req, res) => {
+  const { userId, role } = await req.body;
+
   const token = jwt.sign({ userId }, process.env.JWT_SECRET!);
-  res.status(200).json({ message: "Login Successful", token });
+  res.status(200).json({ message: "Logged in as " + role, token });
 });
 
 export default app;
