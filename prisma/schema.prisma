@@ -86,7 +86,7 @@ model User {
 model Driver {
   id                 String             @id @default(cuid())
   isAvailable        Boolean            @default(false)
-  verificationStatus VerificationStatus @default(PENDING)
+  verificationStatus VerificationStatus @default(APPROVED)
   currentLocationLat Float?
   currentLocationLng Float?
   createdAt          DateTime           @default(now())
@@ -108,13 +108,13 @@ model Driver {
 
 /// Vehicle information for a specific driver
 model Vehicle {
-  id           String      @id @default(cuid())
-  make         String
-  model        String
-  year         Int
-  color        String
-  licensePlate String      @unique
-  type         VehicleType
+  id                 String      @id @default(cuid())
+  make               String
+  model              String
+  year               Int
+  color              String
+  registrationNumber String      @unique
+  type               VehicleType
 
   // Relation to the Driver model (one-to-one)
   driver   Driver @relation(fields: [driverId], references: [id])
@@ -128,7 +128,7 @@ model DriverDocument {
   id         String  @id @default(cuid())
   type       String // e.g., "DRIVING_LICENSE", "VEHICLE_REGISTRATION"
   url        String // URL to the stored document (e.g., in S3)
-  isVerified Boolean @default(false)
+  isVerified Boolean @default(true)
 
   driver   Driver @relation(fields: [driverId], references: [id])
   driverId String
