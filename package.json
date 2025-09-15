@@ -1,8 +1,8 @@
 {
-  "name": "cargo",
+  "name": "waylink-backend",
   "version": "1.0.0",
-  "description": "this is backenhrheheheh",
-  "main": "index.js",
+  "description": "this is backend",
+  "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx prisma generate & tsc -b"
@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/RidePoolingApp/backend#readme",
   "dependencies": {
-    "@prisma/client": "^6.14.0",
+    "@prisma/client": "^6.16.1",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
