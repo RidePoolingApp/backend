@@ -42,16 +42,39 @@ app.post(
   verifyDriverDocumentSchema,
   async (req: Request, res: Response) => {
     try {
-      const driverDocument = await prisma.driverDocument.createMany({
-        data: req.body,
+      const { driverId, adhaarCard, driverLicense } = req.body;
+
+      const AdhaarCard = await prisma.aadharCard.create({
+        data: {
+          adhaarNumber: adhaarCard.adhaarNumber,
+          name: adhaarCard.name,
+        },
       });
-      if (!driverDocument) {
-        return res
-          .status(400)
-          .json({ message: "failed to upload driver document" });
+
+      const DL = await prisma.driverLicense.create({
+        data: {
+          DLNumber: driverLicense.DLNumber,
+          DOB: driverLicense.DOB,
+        },
+      });
+
+      if (AdhaarCard.id && DL.id) {
+        const driverDocument = await prisma.driverDocuments.create({
+          data: {
+            driverId,
+            aadharCardId: AdhaarCard.id,
+            driverLicenseId: DL.id,
+          },
+        });
+
+        if (!driverDocument) {
+          return res
+            .status(400)
+            .json({ message: "failed to upload driver document" });
+        }
       }
       res.status(201).json({
-        message: "uploaded successfully, forwarding for verification",
+        message: "uploaded successfully, forwarding for verification!",
       });
     } catch (err) {
       console.log("error uploading driver documents", err);
