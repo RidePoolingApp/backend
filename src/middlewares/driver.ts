@@ -40,7 +40,8 @@ export const verifyDriverDocumentSchema = async (
   const payload = req.body;
   const verifiedPayload = driverDocumentSchema.safeParse(payload);
   if (!verifiedPayload.success) {
-    return res.status(400).json({ message: "Invalid Request Body" });
+    const error = driverDocumentSchema.safeParse(payload);
+    return res.status(400).json({ message: "Invalid Request Body ", error });
   }
   req.body = verifiedPayload.data;
   next();
