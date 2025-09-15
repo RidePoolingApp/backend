@@ -6,10 +6,14 @@ export const driverRegisterSchema = z.object({
   currentLocationLng: z.number(),
 });
 
-export const driverDocumentSchema = z.array(
-  z.object({
-    driverId: z.string(),
-    type: z.string(),
-    url: z.string(),
+export const driverDocumentSchema = z.object({
+  driverId: z.string(),
+  adhaarCard: z.object({
+    adhaarNumber: z.int(),
+    name: z.string(),
   }),
-);
+  driverLicense: z.object({
+    DLNumber: z.string(),
+    DOB: z.string(),
+  }),
+});
