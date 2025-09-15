@@ -99,7 +99,7 @@ model Driver {
   // A driver has one primary vehicle
   vehicle   Vehicle?
   // A driver has multiple documents for verification
-  documents DriverDocument[]
+  documents DriverDocuments[]
   // A driver can conduct many rides
   rides     Ride[]
 
@@ -123,15 +123,30 @@ model Vehicle {
   @@map("vehicles")
 }
 
-/// Documents for driver verification
-model DriverDocument {
-  id         String  @id @default(cuid())
-  type       String // e.g., "DRIVING_LICENSE", "VEHICLE_REGISTRATION"
-  url        String // URL to the stored document (e.g., in S3)
-  isVerified Boolean @default(true)
+model AadharCard {
+  id             String            @id @default(cuid())
+  adhaarNumber   BigInt            @unique
+  name           String // Name as in AadharCard
+  DriverDocument DriverDocuments[]
+}
 
-  driver   Driver @relation(fields: [driverId], references: [id])
-  driverId String
+model DriverLicense {
+  id             String            @id @default(cuid())
+  DLNumber       String
+  DOB            String
+  DriverDocument DriverDocuments[]
+}
+
+/// Documents for driver verification
+model DriverDocuments {
+  id              String        @id @default(cuid())
+  adhaarCard      AadharCard    @relation(fields: [aadharCardId], references: [id])
+  driverLicense   DriverLicense @relation(fields: [driverLicenseId], references: [id])
+  isVerified      Boolean       @default(true)
+  driver          Driver        @relation(fields: [driverId], references: [id])
+  driverId        String
+  aadharCardId    String
+  driverLicenseId String
 
   @@map("driver_documents")
 }
