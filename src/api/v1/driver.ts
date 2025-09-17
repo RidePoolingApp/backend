@@ -81,4 +81,25 @@ app.post(
     }
   },
 );
+
+app.post("/ride", verifyDriver, async (req: Request, res: Response) => {
+  try {
+    const ride = await prisma.ride.create({
+      data: {
+        driverId: req.body.driverId,
+        startLocationLat: req.body.startLocationLat,
+        startLocationLng: req.body.startLocationLng,
+        endLocationLat: req.body.endLocationLat,
+        endLocationLng: req.body.endLocationLng,
+      },
+    });
+    if (!ride) {
+      return res.status(400).json({ message: "failed to create ride!" });
+    }
+    res.status(201).json({ message: "Ride created successfully!" });
+  } catch (err) {
+    console.log("error creating ride", err);
+  }
+});
+
 export default app;
