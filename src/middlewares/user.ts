@@ -1,6 +1,11 @@
 import { type NextFunction, type Response, type Request } from "express";
 import { loginSchema, signUpSchema } from "../../types/user";
+import bcrypt from "bcrypt";
 import prisma from "../../services/db";
+const isValidPassword = async (password: string, hash: string) => {
+  const result = await bcrypt.compare(password, hash);
+  return result;
+};
 
 export const verifySignUpPayload = async (
   req: Request,
@@ -29,16 +34,15 @@ export const verifyUser = async (
 
   const user = await prisma.user.findFirst({
     where: {
-      id: parsedSchema.data.userId,
-    },
-    select: {
-      role: true,
+      email: parsedSchema.data.email,
     },
   });
-  req.body.role = user?.role;
   if (!user) {
     return res.status(400).json({ message: "user does not exist" });
   }
-
+  if (!(await isValidPassword(parsedSchema.data.password, user.password))) {
+    return res.status(400).json({ message: "invalid password" });
+  }
+  req.body.password = user.password;
   next();
 };
