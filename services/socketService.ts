@@ -16,7 +16,7 @@ const redisOptions = {
   },
   maxRetriesPerRequest: 3,
   connectTimeout: 10000,
-  tls: {},
+  //  tls: {},
 };
 
 //The main class for socket services
@@ -41,6 +41,10 @@ class SocketService {
 
     this._pub = new Redis(redisOptions);
     this._sub = new Redis(redisOptions);
+
+    this._pub && this._sub
+      ? console.log("Redis Connected!")
+      : console.log("Redis not connected!");
 
     // Error handlers
     this._pub.on("error", (err) => console.error("Redis Pub Error:", err));
