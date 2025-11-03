@@ -22,6 +22,24 @@ export const verifySignUpPayload = async (
   next();
 };
 
+export const userExists = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { userId, email } = req.body;
+  const user = await prisma.user.findFirst({
+    where: {
+      email,
+      id: userId,
+    },
+  });
+  if (user) {
+    return res.status(400).json({ message: "user already exists!" });
+  }
+  next();
+};
+
 export const verifyUser = async (
   req: Request,
   res: Response,
@@ -44,5 +62,6 @@ export const verifyUser = async (
     return res.status(400).json({ message: "invalid password" });
   }
   req.body.password = user.password;
+  req.body.userId = user.id;
   next();
 };

@@ -2,7 +2,11 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import express from "express";
 import cors from "cors";
-import { verifySignUpPayload, verifyUser } from "../../middlewares/user";
+import {
+  userExists,
+  verifySignUpPayload,
+  verifyUser,
+} from "../../middlewares/user";
 import prisma from "../../../services/db";
 
 const app = express();
@@ -10,15 +14,16 @@ app.use(express.json());
 app.use(cors());
 
 //signup handler
-app.post("/signup", verifySignUpPayload, async (req, res) => {
+app.post("/signup", verifySignUpPayload, userExists, async (req, res) => {
   const payload = req.body;
-  const { name, phone, email } = payload;
+  const { name, phone, email, userId } = payload;
   try {
     // if signup using email password
     bcrypt.hash(payload.password, 10, async function (err, hash) {
       try {
         const user = await prisma.user.create({
           data: {
+            id: userId,
             name,
             email,
             phone,
@@ -47,7 +52,9 @@ app.post("/signup", verifySignUpPayload, async (req, res) => {
 
 //login handler
 app.post("/login", verifyUser, async (req, res) => {
-  const { userId, password } = await req.body;
+  const { userId, password } = req.body;
+  console.log("userId", userId);
+
   const token = jwt.sign({ userId, password }, process.env.JWT_SECRET!);
   res.status(200).json({ message: "Logged in ", token });
 });

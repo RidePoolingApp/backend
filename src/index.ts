@@ -18,18 +18,18 @@ const startServer = async () => {
   // create a new socket service from SocketService class
   const PORT = 3000;
 
-  const socketService = new SocketService();
+  //const socketService = new SocketService();
   // create a new http server
   // set the port
   const httpServer = http.createServer(app);
   // attach the socket service to the http server
-  socketService.getIo().attach(httpServer);
+  //  socketService.getIo().attach(httpServer);
   // listen to the port
   httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });
   // initialize the socket listeners
-  socketService.initListeners();
+  //socketService.initListeners();
 
   app.get("/", (req, res) => {
     res.send("This shit works!!");

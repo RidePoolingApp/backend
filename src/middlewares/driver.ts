@@ -22,8 +22,6 @@ export const verifyDriver = async (
     },
   });
   if (!driver) {
-    console.log("after db call");
-
     return res
       .status(401)
       .json({ message: "Unauthorized Request after db call" });
@@ -34,12 +32,17 @@ export const verifyDriver = async (
 const verifyUserId = async (authorization: string) => {
   const token = authorization.split(" ")[1];
   if (!token) {
+    console.log("token is null");
+
     return 0;
   }
   const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
     userId: string;
+    password: string;
   };
   if (!decoded.userId) {
+    console.log("decoded userId is null");
+
     return 0;
   }
   return decoded.userId;
