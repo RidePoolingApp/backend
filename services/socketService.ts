@@ -1,23 +1,6 @@
 import { Server } from "socket.io";
 import Redis from "ioredis";
-import dotenv from "dotenv";
-
-// Load environment variables
-dotenv.config();
-//define redis config
-const redisOptions = {
-  host: process.env.REDIS_HOST,
-  port: parseInt(process.env.REDIS_PORT || "21348"),
-  username: process.env.REDIS_USERNAME,
-  password: process.env.REDIS_PASSWORD,
-  retryStrategy: (times: number) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-  maxRetriesPerRequest: 3,
-  connectTimeout: 10000,
-  //  tls: {},
-};
+import { redisOptions } from "../src/config/redis";
 
 //The main class for socket services
 class SocketService {
