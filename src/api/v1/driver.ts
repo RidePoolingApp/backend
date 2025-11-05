@@ -6,6 +6,9 @@ import {
   verifyDriverDocumentSchema,
   verifyDriverRegisterSchema,
 } from "../../middlewares/driver";
+import type { GeoLocation } from "../../../types/ride";
+import Redis from "ioredis";
+import { redisOptions } from "../../config/redis";
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -81,6 +84,8 @@ app.post(
     }
   },
 );
+
+export const addRideLocation = async (location: GeoLocation) => {};
 
 app.post("/ride", verifyDriver, async (req: Request, res: Response) => {
   try {
