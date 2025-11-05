@@ -18,3 +18,18 @@ export const createRideSchema = z.object({
   endLocationLng: z.number(),
   driverId: z.string(),
 });
+
+export interface GeoLocation {
+  startLocationLat: number;
+  startLocationLng: number;
+  endLocationLat: number;
+  endLocationLng: number;
+}
+
+export interface RideSearch {
+  startLocationLat: number;
+  startLocationLng: number;
+  endLocationLat: number;
+  endLocationLng: number;
+  luggage?: boolean;
+}
