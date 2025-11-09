@@ -51,11 +51,6 @@ enum PaymentStatus {
   FAILED
 }
 
-enum ReviewType {
-  PASSENGER_TO_DRIVER
-  DRIVER_TO_PASSENGER
-}
-
 /// MODELS
 
 /// Represents any user in the system, can be a Passenger or a Driver
@@ -64,7 +59,7 @@ model User {
   phone           String   @unique
   name            String
   email           String?  @unique
-  password        String // hashed password
+  password        String? // hashed password
   profileImageUrl String?
   role            UserRole @default(PASSENGER)
   createdAt       DateTime @default(now())
@@ -91,17 +86,16 @@ model Driver {
   currentLocationLng Float?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
-
+  avgRating          Float              @default(0.0)
   // Relation to the base User model (one-to-one)
-  user   User   @relation(fields: [userId], references: [id])
-  userId String @unique
-
+  user               User               @relation(fields: [userId], references: [id])
+  userId             String             @unique
   // A driver has one primary vehicle
-  vehicle   Vehicle?
+  vehicle            Vehicle?
   // A driver has multiple documents for verification
-  documents DriverDocuments[]
+  documents          DriverDocuments[]
   // A driver can conduct many rides
-  rides     Ride[]
+  rides              Ride[]
 
   @@map("drivers")
 }
@@ -172,8 +166,8 @@ model Ride {
 
   // This ride is composed of one or more passenger bookings
   passengers RidePassenger[]
-
-  createdAt DateTime @default(now())
+  rating     Int
+  createdAt  DateTime        @default(now())
 
   @@map("rides")
 }
@@ -229,10 +223,9 @@ model Payment {
 
 /// Represents a review given after a ride
 model Review {
-  id         String     @id @default(cuid())
-  rating     Int // Rating from 1 to 5
-  comment    String?
-  reviewType ReviewType
+  id      String  @id @default(cuid())
+  rating  Int // Rating from 1 to 5
+  comment String?
 
   // The booking this review is associated with
   booking   RidePassenger @relation(fields: [bookingId], references: [id])
