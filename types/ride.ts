@@ -33,3 +33,8 @@ export interface RideSearch {
   endLocationLng: number;
   luggage?: boolean;
 }
+
+export interface LatLang {
+  lat: number;
+  lang: number;
+}
