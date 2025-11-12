@@ -17,6 +17,12 @@ enum UserRole {
   ADMIN
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 enum VerificationStatus {
   PENDING
   APPROVED
@@ -51,6 +57,17 @@ enum PaymentStatus {
   FAILED
 }
 
+enum languauges {
+  ENGLISH
+  KANNADA
+  HINDI
+  MALAYALAM
+  TAMIL
+  KONKANI
+  TELAGU
+  TULU
+}
+
 /// MODELS
 
 /// Represents any user in the system, can be a Passenger or a Driver
@@ -64,17 +81,50 @@ model User {
   role            UserRole @default(PASSENGER)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  age             Int
+  gender          Gender
 
   // A user can be a driver (one-to-one)
-  driverProfile   Driver?
   // A user can be a passenger in many rides
-  bookings        RidePassenger[] @relation("PassengerBookings")
-  // Reviews a user has given
-  reviewsGiven    Review[]        @relation("Reviewer")
-  // Reviews a user has received
-  reviewsReceived Review[]        @relation("Reviewee")
+  bookings      Booking[]       @relation("PassengerBookings")
+  PaymentMethod PaymentMethod[]
+  Trip          Trip?           @relation(fields: [tripId], references: [id])
+  tripId        String?
+  Booking       Booking[]
 
   @@map("users")
+}
+
+model PassengerProfile {
+  id        String     @id @default(cuid())
+  languauge languauges @default(ENGLISH)
+}
+
+model PaymentMethod {
+  id        String @id @default(cuid())
+  Passenger User   @relation(fields: [userId], references: [id])
+  userId    String
+  upi       UPI    @relation(fields: [uPIId], references: [id])
+  uPIId     String
+  card      Card   @relation(fields: [cardId], references: [id])
+  cardId    String
+}
+
+model UPI {
+  id           String @id @default(cuid())
+  vpa          String
+  customerName String
+
+  PaymentMethod PaymentMethod[]
+}
+
+model Card {
+  id             String          @id @default(cuid())
+  cardNumber     String
+  cvv            String
+  expiryDate     String
+  billingAddress String
+  PaymentMethod  PaymentMethod[]
 }
 
 /// Contains driver-specific information and is linked to a User account
@@ -82,20 +132,17 @@ model Driver {
   id                 String             @id @default(cuid())
   isAvailable        Boolean            @default(false)
   verificationStatus VerificationStatus @default(APPROVED)
-  currentLocationLat Float?
-  currentLocationLng Float?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  joinedAt           DateTime           @default(now())
   avgRating          Float              @default(0.0)
+  gender             Gender
+  email              String             @unique
   // Relation to the base User model (one-to-one)
-  user               User               @relation(fields: [userId], references: [id])
-  userId             String             @unique
   // A driver has one primary vehicle
   vehicle            Vehicle?
   // A driver has multiple documents for verification
   documents          DriverDocuments[]
   // A driver can conduct many rides
-  rides              Ride[]
+  trips              Trip[]
 
   @@map("drivers")
 }
@@ -106,7 +153,6 @@ model Vehicle {
   make               String
   model              String
   year               Int
-  color              String
   registrationNumber String      @unique
   type               VehicleType
 
@@ -131,6 +177,18 @@ model DriverLicense {
   DriverDocument DriverDocuments[]
 }
 
+model Stop {
+  id       String    @id @default(cuid())
+  address  String
+  landmark String
+  pincode  Int
+  Trip     Trip[]
+  Booking  Booking[]
+  Trip     Trip[]
+  Trip     Trip[]
+  Booking  Booking[]
+}
+
 /// Documents for driver verification
 model DriverDocuments {
   id              String        @id @default(cuid())
@@ -146,61 +204,43 @@ model DriverDocuments {
 }
 
 /// Represents the entire trip taken by a driver's vehicle. It can contain multiple passengers.
-model Ride {
-  id                String     @id @default(cuid())
-  status            RideStatus @default(SEARCHING_FOR_PASSENGERS)
-  startTime         DateTime?
-  endTime           DateTime?
-  estimatedDistance Float? // in kilometers
-  estimatedDuration Int? // in minutes
-
-  // The overall route for the driver
-  startLocationLat Float
-  startLocationLng Float
-  endLocationLat   Float
-  endLocationLng   Float
+model Trip {
+  id            String     @id @default(cuid())
+  status        RideStatus @default(SEARCHING_FOR_PASSENGERS)
+  startTime     DateTime?
+  endTime       DateTime?
+  totalDistance Float? // in kilometers
+  startingPoint Stop       @relation("startingPoint", fields: [stopId], references: [id])
+  endingPoint   Stop       @relation("endingPoint", fields: [stopId], references: [id])
 
   // Relation to the driver conducting the ride
   driver   Driver @relation(fields: [driverId], references: [id])
   driverId String
 
   // This ride is composed of one or more passenger bookings
-  passengers RidePassenger[]
-  rating     Int
-  createdAt  DateTime        @default(now())
+  passengers User[]
+  Avgrating  Int
+  createdAt  DateTime @default(now())
+  stopId     String
+  Stop       Stop     @relation(fields: [stopId], references: [id])
 
   @@map("rides")
 }
 
-/// Join table connecting a User (passenger) to a specific Ride. This is a single booking.
-model RidePassenger {
-  id     String        @id @default(cuid())
-  status BookingStatus @default(REQUESTED)
-  otp    String // Boarding OTP for this passenger
-  fare   Decimal       @db.Decimal(10, 2)
-
-  // Passenger-specific pickup and dropoff points
-  pickupLocationLat  Float
-  pickupLocationLng  Float
-  dropoffLocationLat Float
-  dropoffLocationLng Float
-
-  // Relation to the overall ride
-  ride   Ride   @relation(fields: [rideId], references: [id])
-  rideId String
-
-  // Relation to the user who is the passenger
-  passenger   User   @relation("PassengerBookings", fields: [passengerId], references: [id])
-  passengerId String
-
-  // A booking can have one payment record
-  payment Payment?
-  // A booking can have reviews associated with it
-  reviews Review[]
-
-  createdAt DateTime @default(now())
-
-  @@map("ride_passengers")
+model Booking {
+  id            String        @id @default(cuid())
+  amount        Decimal       @db.Decimal(10, 2)
+  status        BookingStatus @default(REQUESTED)
+  BoardingOTP   String? // Boarding OTP for this passenger
+  BoardingPoint Stop          @relation("BoardingPoint", fields: [stopId], references: [id])
+  dropoffPoint  Stop          @relation(fields: [stopId], references: [id])
+  passenger     User          @relation(fields: [passengerId], references: [id])
+  passengerId   String
+  stopId        String
+  Payment       Payment?
+  User          User?         @relation(fields: [userId], references: [id])
+  userId        String?
+  User          User?         @relation(fields: [userId], references: [id])
 }
 
 /// Represents a payment transaction for a single booking
@@ -212,34 +252,11 @@ model Payment {
   method           String? // e.g., "upi", "card"
 
   // Relation to the specific booking this payment is for
-  booking   RidePassenger @relation(fields: [bookingId], references: [id])
-  bookingId String        @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  bookingId String  @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("payments")
-}
-
-/// Represents a review given after a ride
-model Review {
-  id      String  @id @default(cuid())
-  rating  Int // Rating from 1 to 5
-  comment String?
-
-  // The booking this review is associated with
-  booking   RidePassenger @relation(fields: [bookingId], references: [id])
-  bookingId String
-
-  // Who gave the review
-  reviewer   User   @relation("Reviewer", fields: [reviewerId], references: [id])
-  reviewerId String
-
-  // Who received the review
-  reviewee   User   @relation("Reviewee", fields: [revieweeId], references: [id])
-  revieweeId String
-
-  createdAt DateTime @default(now())
-
-  @@map("reviews")
 }
