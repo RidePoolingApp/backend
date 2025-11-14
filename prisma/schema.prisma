@@ -57,14 +57,14 @@ enum PaymentStatus {
   FAILED
 }
 
-enum languauges {
+enum Languages {
   ENGLISH
   KANNADA
   HINDI
   MALAYALAM
   TAMIL
   KONKANI
-  TELAGU
+  TELUGU
   TULU
 }
 
@@ -96,8 +96,8 @@ model User {
 }
 
 model PassengerProfile {
-  id        String     @id @default(cuid())
-  languauge languauges @default(ENGLISH)
+  id       String    @id @default(cuid())
+  language Languages @default(ENGLISH)
 }
 
 model PaymentMethod {
@@ -178,15 +178,15 @@ model DriverLicense {
 }
 
 model Stop {
-  id       String    @id @default(cuid())
+  id       String @id @default(cuid())
   address  String
   landmark String
   pincode  Int
-  Trip     Trip[]
-  Booking  Booking[]
-  Trip     Trip[]
-  Trip     Trip[]
-  Booking  Booking[]
+
+  tripStart      Trip[]    @relation("startingPoint")
+  tripEnd        Trip[]    @relation("endingPoint")
+  boardingPoints Booking[] @relation("BoardingPoint")
+  dropoffPoints  Booking[] @relation("dropoffPoint")
 }
 
 /// Documents for driver verification
@@ -210,37 +210,48 @@ model Trip {
   startTime     DateTime?
   endTime       DateTime?
   totalDistance Float? // in kilometers
-  startingPoint Stop       @relation("startingPoint", fields: [stopId], references: [id])
-  endingPoint   Stop       @relation("endingPoint", fields: [stopId], references: [id])
 
-  // Relation to the driver conducting the ride
+  startingPoint Stop   @relation("startingPoint", fields: [startStopId], references: [id])
+  startStopId   String
+  endingPoint   Stop   @relation("endingPoint", fields: [endStopId], references: [id])
+  endStopId     String
+
   driver   Driver @relation(fields: [driverId], references: [id])
   driverId String
 
-  // This ride is composed of one or more passenger bookings
   passengers User[]
-  Avgrating  Int
+  avgRating  Int?
   createdAt  DateTime @default(now())
-  stopId     String
-  Stop       Stop     @relation(fields: [stopId], references: [id])
 
   @@map("rides")
 }
 
 model Booking {
-  id            String        @id @default(cuid())
-  amount        Decimal       @db.Decimal(10, 2)
-  status        BookingStatus @default(REQUESTED)
-  BoardingOTP   String? // Boarding OTP for this passenger
-  BoardingPoint Stop          @relation("BoardingPoint", fields: [stopId], references: [id])
-  dropoffPoint  Stop          @relation(fields: [stopId], references: [id])
-  passenger     User          @relation(fields: [passengerId], references: [id])
-  passengerId   String
-  stopId        String
-  Payment       Payment?
-  User          User?         @relation(fields: [userId], references: [id])
-  userId        String?
-  User          User?         @relation(fields: [userId], references: [id])
+  id          String        @id @default(cuid())
+  amount      Decimal       @db.Decimal(10, 2)
+  status      BookingStatus @default(REQUESTED)
+  BoardingOTP String? // Boarding OTP for this passenger
+
+  boardingPoint  Stop   @relation("BoardingPoint", fields: [boardingStopId], references: [id])
+  boardingStopId String
+  dropoffPoint   Stop   @relation("dropoffPoint", fields: [dropoffStopId], references: [id])
+  dropoffStopId  String
+
+  passenger   User     @relation("PassengerBookings", fields: [passengerId], references: [id])
+  passengerId String
+  seat        String
+  payment     Payment?
+  User        User?    @relation(fields: [userId], references: [id])
+  userId      String?
+  Ticket      Ticket[]
+}
+
+model Ticket {
+  id            String   @id @default(cuid())
+  tricketNumber Int
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+  bookingId     String
+  createdAt     DateTime @default(now())
 }
 
 /// Represents a payment transaction for a single booking
