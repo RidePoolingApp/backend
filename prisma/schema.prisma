@@ -237,21 +237,33 @@ model Booking {
   dropoffPoint   Stop   @relation("dropoffPoint", fields: [dropoffStopId], references: [id])
   dropoffStopId  String
 
-  passenger   User     @relation("PassengerBookings", fields: [passengerId], references: [id])
-  passengerId String
-  seat        String
-  payment     Payment?
-  User        User?    @relation(fields: [userId], references: [id])
-  userId      String?
-  Ticket      Ticket[]
+  passenger           User                  @relation("PassengerBookings", fields: [passengerId], references: [id])
+  passengerId         String
+  seat                String
+  payment             Payment?
+  User                User?                 @relation(fields: [userId], references: [id])
+  userId              String?
+  Ticket              Ticket[]
+  BookingCancellation BookingCancellation[]
+}
+
+model BookingCancellation {
+  id            String   @id @default(cuid())
+  reason        String
+  cancelledTime DateTime
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+  ticket        Ticket   @relation(fields: [ticketId], references: [id])
+  bookingId     String
+  ticketId      String
 }
 
 model Ticket {
-  id            String   @id @default(cuid())
-  tricketNumber Int
-  booking       Booking  @relation(fields: [bookingId], references: [id])
-  bookingId     String
-  createdAt     DateTime @default(now())
+  id                  String                @id @default(cuid())
+  tricketNumber       Int
+  booking             Booking               @relation(fields: [bookingId], references: [id])
+  bookingId           String
+  createdAt           DateTime              @default(now())
+  BookingCancellation BookingCancellation[]
 }
 
 /// Represents a payment transaction for a single booking
