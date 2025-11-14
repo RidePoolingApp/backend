@@ -51,10 +51,46 @@ enum BookingStatus {
   CANCELLED /// Passenger cancelled their specific booking
 }
 
+enum BookingCategory {
+  LONGTRIP
+  DIALYCAB
+  HIRE
+}
+
 enum PaymentStatus {
   PENDING
   SUCCESSFUL
   FAILED
+}
+
+enum CancellationReason {
+  CHANGE_OF_PLANS
+  NO_LONGER_NEEDED
+  BOOKED_BY_MISTAKE
+  FOUND_ALTERNATIVE_TRANSPORT
+  DRIVER_TOO_FAR
+  DRIVER_ARRIVED_LATE
+  VEHICLE_DETAILS_MISMATCH
+  VEHICLE_NOT_CLEAN
+  DRIVER_UNPROFESSIONAL
+  RUNNING_LATE
+  PERSONAL_EMERGENCY
+  TRAVEL_TIME_CHANGED
+  WORK_COMMITMENT
+  WRONG_PICKUP_LOCATION
+  COULD_NOT_LOCATE_DRIVER
+  TRAFFIC_OR_ROAD_CLOSURE
+  PICKUP_NOT_ACCESSIBLE
+  FELT_UNSAFE
+  UNCOMFORTABLE_WITH_DRIVER
+  PICKUP_AREA_UNSAFE
+  FARE_TOO_HIGH
+  PAYMENT_ISSUE
+  DISCOUNT_NOT_APPLIED
+  SURGE_PRICING
+  BAD_WEATHER
+  EVENT_CANCELLED
+  PUBLIC_DISTURBANCE
 }
 
 enum Languages {
@@ -101,13 +137,14 @@ model PassengerProfile {
 }
 
 model PaymentMethod {
-  id        String @id @default(cuid())
-  Passenger User   @relation(fields: [userId], references: [id])
+  id        String    @id @default(cuid())
+  Passenger User      @relation(fields: [userId], references: [id])
   userId    String
-  upi       UPI    @relation(fields: [uPIId], references: [id])
+  upi       UPI       @relation(fields: [uPIId], references: [id])
   uPIId     String
-  card      Card   @relation(fields: [cardId], references: [id])
+  card      Card      @relation(fields: [cardId], references: [id])
   cardId    String
+  Reciept   Reciept[]
 }
 
 model UPI {
@@ -248,11 +285,11 @@ model Booking {
 }
 
 model BookingCancellation {
-  id            String   @id @default(cuid())
-  reason        String
+  id            String             @id @default(cuid())
+  reason        CancellationReason
   cancelledTime DateTime
-  booking       Booking  @relation(fields: [bookingId], references: [id])
-  ticket        Ticket   @relation(fields: [ticketId], references: [id])
+  booking       Booking            @relation(fields: [bookingId], references: [id])
+  ticket        Ticket             @relation(fields: [ticketId], references: [id])
   bookingId     String
   ticketId      String
 }
@@ -282,4 +319,15 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   @@map("payments")
+}
+
+model Reciept {
+  id              String        @id @default(cuid())
+  amount          Decimal       @db.Decimal(10, 2)
+  promoCode       String?
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  PaymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  paymentMethodId String
+  billingTime     DateTime
+  bookingCategory String
 }
