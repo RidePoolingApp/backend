@@ -2,9 +2,8 @@ import express from "express";
 import cors from "cors";
 import apiV1 from "./api/v1";
 import http from "http";
-import SocketService from "../services/socketService";
+//import SocketService from "../services/socketService";
 const app = express();
-const PORT = 3000;
 app.use(express.json());
 
 app.use(cors());

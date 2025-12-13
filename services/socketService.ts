@@ -13,10 +13,7 @@ class SocketService {
 
     this._io = new Server({
       cors: {
-        origin:
-          process.env.NODE_ENV === "production"
-            ? process.env.ALLOWED_ORIGIN
-            : "*",
+        origin: process.env.NODE_ENV === "production" ? process.env.ALLOWED_ORIGIN : "*",
         methods: ["GET", "POST"],
         credentials: true,
       },
@@ -25,9 +22,11 @@ class SocketService {
     this._pub = new Redis(redisOptions);
     this._sub = new Redis(redisOptions);
 
-    this._pub && this._sub
-      ? console.log("Redis Connected!")
-      : console.log("Redis not connected!");
+    if (this._pub && this._sub) {
+      console.log("Redis Connected!");
+    } else {
+      console.log("Redis not connected!");
+    }
 
     // Error handlers
     this._pub.on("error", (err) => console.error("Redis Pub Error:", err));
@@ -48,7 +47,7 @@ class SocketService {
     this._io.on("connection", (socket) => {
       console.log("New connection:", socket.id);
       socket.on("message", async (message: string) => {
-        console.log("message recieved : " + message);
+        console.log(`message recieved : ${message}`);
         this._pub.publish("MESSAGES", JSON.stringify({ message }));
       });
     });

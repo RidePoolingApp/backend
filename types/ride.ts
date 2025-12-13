@@ -1,5 +1,5 @@
 import { z } from "zod";
-export interface Ride {
+export type Ride = {
   estimatedDistance: number;
   estimatedDuration: number;
   startLocationLat: number;
@@ -7,7 +7,7 @@ export interface Ride {
   endLocationLat: number;
   endLocationLng: number;
   driverId: string;
-}
+};
 
 export const createRideSchema = z.object({
   estimatedDistance: z.number(),
@@ -19,22 +19,22 @@ export const createRideSchema = z.object({
   driverId: z.string(),
 });
 
-export interface GeoLocation {
+export type GeoLocation = {
   startLocationLat: number;
   startLocationLng: number;
   endLocationLat: number;
   endLocationLng: number;
-}
+};
 
-export interface RideSearch {
+export type RideSearch = {
   startLocationLat: number;
   startLocationLng: number;
   endLocationLat: number;
   endLocationLng: number;
   luggage?: boolean;
-}
+};
 
-export interface LatLang {
+export type LatLang = {
   lat: number;
   lang: number;
-}
+};
