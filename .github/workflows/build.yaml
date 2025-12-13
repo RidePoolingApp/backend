@@ -3,7 +3,7 @@ name: Build and Test
 on: [pull_request, push]
 
 jobs:
-  lint:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
