@@ -2,11 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import express from "express";
 import cors from "cors";
-import {
-  userExists,
-  verifySignUpPayload,
-  verifyUser,
-} from "../../middlewares/user";
+import { userExists, verifySignUpPayload, verifyUser } from "../../middlewares/user";
 import prisma from "../../../services/db";
 
 const app = express();
@@ -39,10 +35,7 @@ app.post("/signup", verifySignUpPayload, userExists, async (req, res) => {
           console.log("user not created");
         }
 
-        const token = jwt.sign(
-          { userId: user.id, password: payload.password },
-          process.env.JWT_SECRET!,
-        );
+        const token = jwt.sign({ userId: user.id, password: payload.password }, process.env.JWT_SECRET!);
         res.status(201).json({ message: "Signup successful", token });
       } catch (err) {
         console.log(err);
@@ -51,9 +44,7 @@ app.post("/signup", verifySignUpPayload, userExists, async (req, res) => {
     });
   } catch (err: unknown) {
     console.log(err);
-    return res
-      .status(500)
-      .json({ message: "couldn't complete signup! try again" });
+    return res.status(500).json({ message: "couldn't complete signup! try again" });
   }
 });
 

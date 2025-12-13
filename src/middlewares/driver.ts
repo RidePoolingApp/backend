@@ -2,19 +2,13 @@ import { type NextFunction, type Response, type Request } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../../services/db";
 import { driverDocumentSchema, driverRegisterSchema } from "../../types/driver";
-export const verifyDriver = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const verifyDriver = async (req: Request, res: Response, next: NextFunction) => {
   const { authorization } = req.headers;
   const userId = await verifyUserId(authorization!);
   if (userId === 0) {
     console.log("after jwt verify");
 
-    return res
-      .status(401)
-      .json({ message: "Unauthorized Request after jwt verify" });
+    return res.status(401).json({ message: "Unauthorized Request after jwt verify" });
   }
   const driver = await prisma.driver.findFirst({
     where: {
@@ -22,9 +16,7 @@ export const verifyDriver = async (
     },
   });
   if (!driver) {
-    return res
-      .status(401)
-      .json({ message: "Unauthorized Request after db call" });
+    return res.status(401).json({ message: "Unauthorized Request after db call" });
   }
   next();
 };
@@ -48,11 +40,7 @@ const verifyUserId = async (authorization: string) => {
   return decoded.userId;
 };
 
-export const verifyDriverRegisterSchema = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const verifyDriverRegisterSchema = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body;
   const verifiedPayload = driverRegisterSchema.safeParse(payload);
   if (!verifiedPayload.success) {
@@ -62,11 +50,7 @@ export const verifyDriverRegisterSchema = async (
   next();
 };
 
-export const verifyDriverDocumentSchema = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const verifyDriverDocumentSchema = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body;
   const verifiedPayload = driverDocumentSchema.safeParse(payload);
   if (!verifiedPayload.success) {
