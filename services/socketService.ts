@@ -1,8 +1,20 @@
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import Redis from "ioredis";
 import { redisOptions } from "../src/config/redis";
 
-//The main class for socket services
+interface DriverLocation {
+  lat: number;
+  lng: number;
+  driverId: string;
+}
+
+interface RideUpdate {
+  rideId: string;
+  status: string;
+  driverId?: string;
+  driverLocation?: DriverLocation;
+}
+
 class SocketService {
   private _io: Server;
   private _pub: Redis;
@@ -28,37 +40,77 @@ class SocketService {
       console.log("Redis not connected!");
     }
 
-    // Error handlers
     this._pub.on("error", (err) => console.error("Redis Pub Error:", err));
     this._sub.on("error", (err) => console.error("Redis Sub Error:", err));
 
-    // Subscribe to general messages channel
-    this._sub.subscribe("MESSAGES");
+    this._sub.subscribe("DRIVER_LOCATION");
+    this._sub.subscribe("RIDE_STATUS");
+    this._sub.subscribe("NEW_RIDE_REQUEST");
   }
 
   public getIo() {
     return this._io;
   }
 
-  //initializing the listeners
   public initListeners() {
     console.log("Initializing socket listeners...");
 
-    this._io.on("connection", (socket) => {
+    this._io.on("connection", (socket: Socket) => {
       console.log("New connection:", socket.id);
-      socket.on("message", async (message: string) => {
-        console.log(`message recieved : ${message}`);
-        this._pub.publish("MESSAGES", JSON.stringify({ message }));
+
+      socket.on("join:rider", (userId: string) => {
+        socket.join(`rider:${userId}`);
+        console.log(`Rider ${userId} joined`);
+      });
+
+      socket.on("join:driver", (driverId: string) => {
+        socket.join(`driver:${driverId}`);
+        socket.join("drivers");
+        console.log(`Driver ${driverId} joined`);
+      });
+
+      socket.on("driver:location", (data: DriverLocation) => {
+        this._pub.publish("DRIVER_LOCATION", JSON.stringify(data));
+      });
+
+      socket.on("ride:status", (data: RideUpdate) => {
+        this._pub.publish("RIDE_STATUS", JSON.stringify(data));
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Disconnected:", socket.id);
       });
     });
 
-    // Handle Redis messages
     this._sub.on("message", (channel: string, message: string) => {
-      if (channel === "MESSAGES") {
-        this._io.emit("message", message);
-        console.log("Message sent to all servers!");
+      const data = JSON.parse(message);
+
+      if (channel === "DRIVER_LOCATION") {
+        this._io.to("drivers").emit("driver:location", data);
+        if (data.rideId) {
+          this._io.to(`ride:${data.rideId}`).emit("driver:location", data);
+        }
+      }
+
+      if (channel === "RIDE_STATUS") {
+        this._io.to(`rider:${data.riderId}`).emit("ride:status", data);
+        if (data.driverId) {
+          this._io.to(`driver:${data.driverId}`).emit("ride:status", data);
+        }
+      }
+
+      if (channel === "NEW_RIDE_REQUEST") {
+        this._io.to("drivers").emit("ride:new", data);
       }
     });
+  }
+
+  public emitRideRequest(ride: object) {
+    this._pub.publish("NEW_RIDE_REQUEST", JSON.stringify(ride));
+  }
+
+  public emitRideStatusUpdate(data: RideUpdate) {
+    this._pub.publish("RIDE_STATUS", JSON.stringify(data));
   }
 }
 
