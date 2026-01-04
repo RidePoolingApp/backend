@@ -31,6 +31,7 @@ router.post("/register", requireAuthentication, async (req, res) => {
       vehicleYear: Number(vehicleYear),
       vehicleColor,
       licensePlate,
+      isVerified: true,
     },
   });
 
@@ -199,6 +200,77 @@ router.get("/earnings", requireAuthentication, requireDriver, async (req, res) =
   });
 
   res.json({ earnings, total: total._sum.amount || 0 });
+});
+
+router.get("/rides/history", requireAuthentication, requireDriver, async (req, res) => {
+  const { page = "1", limit = "10", status } = req.query;
+  const pageNum = parseInt(page as string);
+  const limitNum = parseInt(limit as string);
+  const skip = (pageNum - 1) * limitNum;
+
+  const where: any = { driverId: req.driver!.id };
+  if (status && status !== "All") {
+    where.status = status as string;
+  }
+
+  const [rides, total] = await Promise.all([
+    prisma.ride.findMany({
+      where,
+      include: { 
+        rider: true, 
+        pickup: true, 
+        drop: true,
+        rating: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limitNum,
+    }),
+    prisma.ride.count({ where }),
+  ]);
+
+  res.json({ rides, total, page: pageNum, limit: limitNum });
+});
+
+router.get("/ratings", requireAuthentication, requireDriver, async (req, res) => {
+  const ratings = await prisma.rating.findMany({
+    where: { driverId: req.driver!.id },
+    include: { 
+      ride: { include: { rider: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const totalReviews = ratings.length;
+  const avgRating = totalReviews > 0 
+    ? ratings.reduce((sum, r) => sum + r.score, 0) / totalReviews 
+    : 5;
+
+  const ratingCounts: number[] = [0, 0, 0, 0, 0];
+  ratings.forEach(r => {
+    if (r.score >= 1 && r.score <= 5) {
+      ratingCounts[r.score - 1] = (ratingCounts[r.score - 1] || 0) + 1;
+    }
+  });
+
+  const ratingBreakdown = [5, 4, 3, 2, 1].map(star => ({
+    star,
+    percentage: totalReviews > 0 ? ((ratingCounts[star - 1] || 0) / totalReviews) * 100 : 0,
+  }));
+
+  const reviews = ratings.slice(0, 20).map(r => ({
+    stars: r.score,
+    name: r.ride?.rider ? `${r.ride.rider.firstName || ""} ${r.ride.rider.lastName || ""}`.trim() || "Anonymous" : "Anonymous",
+    msg: r.comment || "",
+    date: r.createdAt.toISOString().split("T")[0],
+  }));
+
+  res.json({
+    rating: Math.round(avgRating * 10) / 10,
+    totalReviews,
+    ratingBreakdown,
+    reviews,
+  });
 });
 
 export default router;
