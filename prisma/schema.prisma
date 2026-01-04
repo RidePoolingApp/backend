@@ -7,12 +7,13 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
   id           String   @id @default(cuid())
-  clerkId      String   @unique
   email        String   @unique
+  password     String
   phone        String?  @unique
   firstName    String?
   lastName     String?
@@ -29,6 +30,25 @@ model User {
   savedPlaces   SavedPlace[]
   notifications Notification[]
   driverProfile DriverProfile?
+}
+
+model BoardingPoint {
+  id       String  @id @default(cuid())
+  address  String
+  pincode  String
+  landmark String?
+  lat      Float
+  lng      Float
+
+  ridesAsPickup               Ride[]                  @relation("RidePickup")
+  ridesAsDrop                 Ride[]                  @relation("RideDrop")
+  sharedRidesAsStart          SharedRide[]            @relation("SharedRideStart")
+  sharedRidesAsEnd            SharedRide[]            @relation("SharedRideEnd")
+  sharedPassengersAsPickup    SharedRidePassenger[]   @relation("PassengerPickup")
+  sharedPassengersAsDrop      SharedRidePassenger[]   @relation("PassengerDrop")
+  dailyCabSubscriptionsPickup DailyCabSubscription[]  @relation("DailyCabPickup")
+  dailyCabSubscriptionsDrop   DailyCabSubscription[]  @relation("DailyCabDrop")
+  savedPlaces                 SavedPlace[]
 }
 
 model DriverProfile {
@@ -58,80 +78,80 @@ model DriverProfile {
 }
 
 model Ride {
-  id            String         @id @default(cuid())
-  riderId       String
-  rider         User           @relation(fields: [riderId], references: [id])
-  driverId      String?
-  driver        DriverProfile? @relation(fields: [driverId], references: [id])
-  type          RideType
-  status        RideStatus     @default(PENDING)
-  pickupLat     Float
-  pickupLng     Float
-  pickupAddress String
-  dropLat       Float
-  dropLng       Float
-  dropAddress   String
-  distance      Float?
-  duration      Int?
-  fare          Float?
-  scheduledAt   DateTime?
-  startedAt     DateTime?
-  completedAt   DateTime?
-  cancelledAt   DateTime?
-  cancelReason  String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id           String         @id @default(cuid())
+  riderId      String
+  rider        User           @relation(fields: [riderId], references: [id])
+  driverId     String?
+  driver       DriverProfile? @relation(fields: [driverId], references: [id])
+  type         RideType
+  status       RideStatus     @default(PENDING)
+  pickupId     String
+  pickup       BoardingPoint  @relation("RidePickup", fields: [pickupId], references: [id])
+  dropId       String
+  drop         BoardingPoint  @relation("RideDrop", fields: [dropId], references: [id])
+  distance     Float?
+  duration     Int?
+  fare         Float?
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   payment Payment?
   rating  Rating?
 }
 
 model SharedRide {
-  id             String     @id @default(cuid())
+  id             String        @id @default(cuid())
   driverId       String?
-  status         RideStatus @default(PENDING)
-  routeStart     String
-  routeEnd       String
+  status         RideStatus    @default(PENDING)
+  routeStartId   String
+  routeStart     BoardingPoint @relation("SharedRideStart", fields: [routeStartId], references: [id])
+  routeEndId     String
+  routeEnd       BoardingPoint @relation("SharedRideEnd", fields: [routeEndId], references: [id])
   departureTime  DateTime
   availableSeats Int
   pricePerSeat   Float
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   passengers SharedRidePassenger[]
 }
 
 model SharedRidePassenger {
-  id            String          @id @default(cuid())
-  sharedRideId  String
-  sharedRide    SharedRide      @relation(fields: [sharedRideId], references: [id])
-  userId        String
-  user          User            @relation(fields: [userId], references: [id])
-  pickupAddress String
-  dropAddress   String
-  seats         Int             @default(1)
-  status        PassengerStatus @default(PENDING)
-  createdAt     DateTime        @default(now())
+  id           String          @id @default(cuid())
+  sharedRideId String
+  sharedRide   SharedRide      @relation(fields: [sharedRideId], references: [id])
+  userId       String
+  user         User            @relation(fields: [userId], references: [id])
+  pickupId     String
+  pickup       BoardingPoint   @relation("PassengerPickup", fields: [pickupId], references: [id])
+  dropId       String
+  drop         BoardingPoint   @relation("PassengerDrop", fields: [dropId], references: [id])
+  seats        Int             @default(1)
+  status       PassengerStatus @default(PENDING)
+  createdAt    DateTime        @default(now())
 }
 
 model DailyCabSubscription {
-  id            String             @id @default(cuid())
-  userId        String
-  user          User               @relation(fields: [userId], references: [id])
-  pickupLat     Float
-  pickupLng     Float
-  pickupAddress String
-  dropLat       Float
-  dropLng       Float
-  dropAddress   String
-  pickupTime    String // "08:30"
-  daysOfWeek    Int[] // [1,2,3,4,5] Mon-Fri
-  startDate     DateTime
-  endDate       DateTime
-  fare          Float
-  status        SubscriptionStatus @default(ACTIVE)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id         String             @id @default(cuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id])
+  pickupId   String
+  pickup     BoardingPoint      @relation("DailyCabPickup", fields: [pickupId], references: [id])
+  dropId     String
+  drop       BoardingPoint      @relation("DailyCabDrop", fields: [dropId], references: [id])
+  pickupTime String // "08:30"
+  daysOfWeek Int[] // [1,2,3,4,5] Mon-Fri
+  startDate  DateTime
+  endDate    DateTime
+  fare       Float
+  status     SubscriptionStatus @default(ACTIVE)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
 }
 
 model Payment {
@@ -161,14 +181,13 @@ model Rating {
 }
 
 model SavedPlace {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  name      String // "Home", "Work"
-  lat       Float
-  lng       Float
-  address   String
-  createdAt DateTime @default(now())
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  name           String // "Home", "Work"
+  boardingPointId String
+  boardingPoint  BoardingPoint @relation(fields: [boardingPointId], references: [id])
+  createdAt      DateTime      @default(now())
 }
 
 model DriverEarning {
