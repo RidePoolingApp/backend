@@ -1,8 +1,36 @@
 import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { createClerkClient } from "@clerk/backend";
+import jwtLib from "jsonwebtoken";
+import jwksClient from "jwks-rsa";
 import prisma from "../../services/db";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
+
+const client = jwksClient({
+  jwksUri: "https://refined-duck-56.clerk.accounts.dev/.well-known/jwks.json",
+  cache: true,
+  rateLimit: true,
+});
+
+function getKey(header: jwtLib.JwtHeader, callback: jwtLib.SigningKeyCallback) {
+  client.getSigningKey(header.kid, (err, key) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+    const signingKey = key?.getPublicKey();
+    callback(null, signingKey);
+  });
+}
+
+interface ClerkJwtPayload extends jwtLib.JwtPayload {
+  sub: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 export const requireAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -16,18 +44,65 @@ export const requireAuthentication = async (req: Request, res: Response, next: N
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
+    const decoded = await new Promise<ClerkJwtPayload>((resolve, reject) => {
+      jwtLib.verify(token, getKey, { algorithms: ["RS256"] }, (err, decoded) => {
+        if (err) reject(err);
+        else resolve(decoded as ClerkJwtPayload);
+      });
+    });
+
+    const clerkUserId = decoded.sub;
+    if (!clerkUserId) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    let user = await prisma.user.findUnique({
+      where: { clerkId: clerkUserId },
+      include: { driverProfile: true },
     });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      let primaryEmail: string | undefined;
+      let firstName: string | undefined;
+      let lastName: string | undefined;
+      let phone: string | undefined;
+
+      try {
+        const clerkUser = await clerkClient.users.getUser(clerkUserId);
+        primaryEmail = clerkUser.emailAddresses[0]?.emailAddress;
+        firstName = clerkUser.firstName || undefined;
+        lastName = clerkUser.lastName || undefined;
+        phone = clerkUser.phoneNumbers[0]?.phoneNumber || undefined;
+      } catch (clerkError) {
+        console.log("Could not fetch Clerk user, using token data");
+        primaryEmail = decoded.email;
+        firstName = decoded.firstName;
+        lastName = decoded.lastName;
+      }
+
+      if (!primaryEmail) {
+        return res.status(400).json({ error: "User email not found in token" });
+      }
+
+      user = await prisma.user.upsert({
+        where: { email: primaryEmail },
+        update: { clerkId: clerkUserId },
+        create: {
+          clerkId: clerkUserId,
+          email: primaryEmail,
+          firstName,
+          lastName,
+          phone,
+          password: "",
+        },
+        include: { driverProfile: true },
+      });
     }
 
     req.user = user;
     next();
-  } catch {
+  } catch (error) {
+    console.error("Auth error:", error);
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 };
@@ -53,10 +128,12 @@ export const requireDriver = async (req: Request, res: Response, next: NextFunct
   next();
 };
 
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+
 export const generateToken = (userId: string): string => {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
+  return jwtLib.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
 };
 
 export const generateRefreshToken = (userId: string): string => {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "30d" });
+  return jwtLib.sign({ userId }, JWT_SECRET, { expiresIn: "30d" });
 };
