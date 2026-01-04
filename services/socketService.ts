@@ -112,6 +112,14 @@ class SocketService {
   public emitRideStatusUpdate(data: RideUpdate) {
     this._pub.publish("RIDE_STATUS", JSON.stringify(data));
   }
+
+  public emitToDriver(driverId: string, event: string, data: object) {
+    this._io.to(`driver:${driverId}`).emit(event, data);
+  }
+
+  public emitToRider(riderId: string, event: string, data: object) {
+    this._io.to(`rider:${riderId}`).emit(event, data);
+  }
 }
 
 export default SocketService;
