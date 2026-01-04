@@ -4,6 +4,31 @@ import { requireAuthentication } from "../../middlewares/auth";
 
 const router = express.Router();
 
+const getOrCreateLocation = async (data: {
+  state: string;
+  district: string;
+  city: string;
+  locationName: string;
+  address: string;
+  pincode: string;
+  landmark?: string;
+  lat?: number;
+  lng?: number;
+}) => {
+  return prisma.location.upsert({
+    where: {
+      state_district_city_locationName: {
+        state: data.state,
+        district: data.district,
+        city: data.city,
+        locationName: data.locationName,
+      },
+    },
+    update: {},
+    create: data,
+  });
+};
+
 router.post("/search", requireAuthentication, async (req, res) => {
   const { routeStart, routeEnd, departureTime, seats = 1 } = req.body;
 
@@ -22,7 +47,11 @@ router.post("/search", requireAuthentication, async (req, res) => {
       departureTime: { gte: startTime, lte: endTime },
       availableSeats: { gte: Number(seats) },
     },
-    include: { passengers: true, routeStart: true, routeEnd: true },
+    include: {
+      passengers: true,
+      routeStart: true,
+      routeEnd: true,
+    },
     orderBy: { departureTime: "asc" },
   });
 
@@ -32,11 +61,11 @@ router.post("/search", requireAuthentication, async (req, res) => {
 router.post("/join", requireAuthentication, async (req, res) => {
   const { sharedRideId, pickup, drop, seats = 1 } = req.body;
 
-  if (!sharedRideId || !pickup?.address || !pickup?.pincode || pickup?.lat === undefined || pickup?.lng === undefined) {
-    return res.status(400).json({ error: "sharedRideId and pickup (address, pincode, lat, lng) are required" });
+  if (!sharedRideId || !pickup?.address || !pickup?.pincode || !pickup?.locationName || !pickup?.state || !pickup?.district || !pickup?.city) {
+    return res.status(400).json({ error: "sharedRideId and pickup (address, pincode, locationName, state, district, city) are required" });
   }
-  if (!drop?.address || !drop?.pincode || drop?.lat === undefined || drop?.lng === undefined) {
-    return res.status(400).json({ error: "drop (address, pincode, lat, lng) is required" });
+  if (!drop?.address || !drop?.pincode || !drop?.locationName || !drop?.state || !drop?.district || !drop?.city) {
+    return res.status(400).json({ error: "drop (address, pincode, locationName, state, district, city) is required" });
   }
 
   const ride = await prisma.sharedRide.findUnique({ where: { id: sharedRideId } });
@@ -57,32 +86,36 @@ router.post("/join", requireAuthentication, async (req, res) => {
     return res.status(400).json({ error: "Already joined this ride" });
   }
 
-  const pickupPoint = await prisma.boardingPoint.create({
-    data: {
-      address: pickup.address,
-      pincode: pickup.pincode,
-      landmark: pickup.landmark,
-      lat: pickup.lat,
-      lng: pickup.lng,
-    },
+  const pickupLocation = await getOrCreateLocation({
+    state: pickup.state,
+    district: pickup.district,
+    city: pickup.city,
+    locationName: pickup.locationName,
+    address: pickup.address,
+    pincode: pickup.pincode,
+    landmark: pickup.landmark,
+    lat: pickup.lat,
+    lng: pickup.lng,
   });
 
-  const dropPoint = await prisma.boardingPoint.create({
-    data: {
-      address: drop.address,
-      pincode: drop.pincode,
-      landmark: drop.landmark,
-      lat: drop.lat,
-      lng: drop.lng,
-    },
+  const dropLocation = await getOrCreateLocation({
+    state: drop.state,
+    district: drop.district,
+    city: drop.city,
+    locationName: drop.locationName,
+    address: drop.address,
+    pincode: drop.pincode,
+    landmark: drop.landmark,
+    lat: drop.lat,
+    lng: drop.lng,
   });
 
   const passenger = await prisma.sharedRidePassenger.create({
     data: {
       sharedRideId,
       userId: req.user!.id,
-      pickupId: pickupPoint.id,
-      dropId: dropPoint.id,
+      pickupId: pickupLocation.id,
+      dropId: dropLocation.id,
       seats: Number(seats),
     },
     include: { pickup: true, drop: true },
@@ -106,7 +139,13 @@ router.get("/matches", requireAuthentication, async (req, res) => {
         include: {
           routeStart: true,
           routeEnd: true,
-          passengers: { include: { user: true, pickup: true, drop: true } },
+          passengers: {
+            include: {
+              user: true,
+              pickup: true,
+              drop: true,
+            },
+          },
         },
       },
     },
