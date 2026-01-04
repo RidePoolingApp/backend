@@ -6,6 +6,7 @@ import rides from "./rides";
 import sharing from "./sharing";
 import dailyCab from "./dailyCab";
 import payments from "./payments";
+import locations from "./locations";
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.use("/rides", rides);
 router.use("/sharing", sharing);
 router.use("/daily-cab", dailyCab);
 router.use("/payments", payments);
+router.use("/locations", locations);
 
 router.get("/", (_req, res) => {
   res.send("Hello from api/v1");
