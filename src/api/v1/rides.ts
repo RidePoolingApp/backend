@@ -4,42 +4,71 @@ import { requireAuthentication } from "../../middlewares/auth";
 
 const router = express.Router();
 
+const getOrCreateLocation = async (data: {
+  state: string;
+  district: string;
+  city: string;
+  locationName: string;
+  address: string;
+  pincode: string;
+  landmark?: string;
+  lat?: number;
+  lng?: number;
+}) => {
+  return prisma.location.upsert({
+    where: {
+      state_district_city_locationName: {
+        state: data.state,
+        district: data.district,
+        city: data.city,
+        locationName: data.locationName,
+      },
+    },
+    update: {},
+    create: data,
+  });
+};
+
 router.post("/", requireAuthentication, async (req, res) => {
   const { type, pickup, drop, scheduledAt } = req.body;
 
-  if (!pickup?.address || !pickup?.pincode || pickup?.lat === undefined || pickup?.lng === undefined) {
-    return res.status(400).json({ error: "Pickup address, pincode, lat, lng are required" });
+  if (!pickup?.address || !pickup?.pincode || !pickup?.locationName || !pickup?.state || !pickup?.district || !pickup?.city) {
+    return res.status(400).json({ error: "Pickup address, pincode, locationName, state, district, city are required" });
   }
-  if (!drop?.address || !drop?.pincode || drop?.lat === undefined || drop?.lng === undefined) {
-    return res.status(400).json({ error: "Drop address, pincode, lat, lng are required" });
+  if (!drop?.address || !drop?.pincode || !drop?.locationName || !drop?.state || !drop?.district || !drop?.city) {
+    return res.status(400).json({ error: "Drop address, pincode, locationName, state, district, city are required" });
   }
 
-  const pickupPoint = await prisma.boardingPoint.create({
-    data: {
-      address: pickup.address,
-      pincode: pickup.pincode,
-      landmark: pickup.landmark,
-      lat: pickup.lat,
-      lng: pickup.lng,
-    },
+  const pickupLocation = await getOrCreateLocation({
+    state: pickup.state,
+    district: pickup.district,
+    city: pickup.city,
+    locationName: pickup.locationName,
+    address: pickup.address,
+    pincode: pickup.pincode,
+    landmark: pickup.landmark,
+    lat: pickup.lat,
+    lng: pickup.lng,
   });
 
-  const dropPoint = await prisma.boardingPoint.create({
-    data: {
-      address: drop.address,
-      pincode: drop.pincode,
-      landmark: drop.landmark,
-      lat: drop.lat,
-      lng: drop.lng,
-    },
+  const dropLocation = await getOrCreateLocation({
+    state: drop.state,
+    district: drop.district,
+    city: drop.city,
+    locationName: drop.locationName,
+    address: drop.address,
+    pincode: drop.pincode,
+    landmark: drop.landmark,
+    lat: drop.lat,
+    lng: drop.lng,
   });
 
   const ride = await prisma.ride.create({
     data: {
       riderId: req.user!.id,
       type: type || "STANDARD",
-      pickupId: pickupPoint.id,
-      dropId: dropPoint.id,
+      pickupId: pickupLocation.id,
+      dropId: dropLocation.id,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
     },
     include: { pickup: true, drop: true },
