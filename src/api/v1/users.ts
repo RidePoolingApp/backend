@@ -4,11 +4,36 @@ import { requireAuthentication } from "../../middlewares/auth";
 
 const router = express.Router();
 
-function excludePassword<T extends { password: string }>(user: T): Omit<T, "password"> {
+const excludePassword = <T extends { password: string }>(user: T): Omit<T, "password"> => {
   const { password, ...rest } = user;
   void password;
   return rest;
-}
+};
+
+const getOrCreateLocation = async (data: {
+  state: string;
+  district: string;
+  city: string;
+  locationName: string;
+  address: string;
+  pincode: string;
+  landmark?: string;
+  lat?: number;
+  lng?: number;
+}) => {
+  return prisma.location.upsert({
+    where: {
+      state_district_city_locationName: {
+        state: data.state,
+        district: data.district,
+        city: data.city,
+        locationName: data.locationName,
+      },
+    },
+    update: {},
+    create: data,
+  });
+};
 
 router.get("/profile", requireAuthentication, async (req, res) => {
   res.json(excludePassword(req.user!));
@@ -31,29 +56,31 @@ router.put("/profile", requireAuthentication, async (req, res) => {
 });
 
 router.post("/saved-places", requireAuthentication, async (req, res) => {
-  const { name, address, pincode, landmark, lat, lng } = req.body;
+  const { name, locationName, address, pincode, landmark, lat, lng, state, district, city } = req.body;
 
-  if (!name || !address || !pincode || lat === undefined || lng === undefined) {
-    return res.status(400).json({ error: "name, address, pincode, lat, lng are required" });
+  if (!name || !locationName || !address || !pincode || !state || !district || !city) {
+    return res.status(400).json({ error: "name, locationName, address, pincode, state, district, city are required" });
   }
 
-  const boardingPoint = await prisma.boardingPoint.create({
-    data: {
-      address,
-      pincode,
-      landmark,
-      lat,
-      lng,
-    },
+  const location = await getOrCreateLocation({
+    state,
+    district,
+    city,
+    locationName,
+    address,
+    pincode,
+    landmark,
+    lat,
+    lng,
   });
 
   const place = await prisma.savedPlace.create({
     data: {
       userId: req.user!.id,
       name,
-      boardingPointId: boardingPoint.id,
+      locationId: location.id,
     },
-    include: { boardingPoint: true },
+    include: { location: true },
   });
 
   res.status(201).json(place);
@@ -62,7 +89,7 @@ router.post("/saved-places", requireAuthentication, async (req, res) => {
 router.get("/saved-places", requireAuthentication, async (req, res) => {
   const places = await prisma.savedPlace.findMany({
     where: { userId: req.user!.id },
-    include: { boardingPoint: true },
+    include: { location: true },
     orderBy: { createdAt: "desc" },
   });
 
