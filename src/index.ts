@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import apiV1 from "./api/v1";
 import http from "http";
-import SocketService from "../services/socketService";
+import { initSocketService } from "../services/socketInstance";
 
 const app = express();
 app.use(express.json());
@@ -16,7 +16,7 @@ app.get("/", (_req, res) => {
 const startServer = async () => {
   const PORT = process.env.PORT || 3000;
 
-  const socketService = new SocketService();
+  const socketService = initSocketService();
   const httpServer = http.createServer(app);
   socketService.getIo().attach(httpServer);
 
