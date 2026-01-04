@@ -54,30 +54,35 @@ model Location {
   dailyCabSubscriptionsPickup DailyCabSubscription[] @relation("DailyCabPickup")
   dailyCabSubscriptionsDrop   DailyCabSubscription[] @relation("DailyCabDrop")
   savedPlaces                 SavedPlace[]
+  driversAtLocation           DriverProfile[]        @relation("DriverCurrentLocation")
 
   @@unique([state, district, city, locationName])
 }
 
 model DriverProfile {
-  id            String      @id @default(cuid())
-  userId        String      @unique
-  user          User        @relation(fields: [userId], references: [id])
-  licenseNumber String
-  licenseExpiry DateTime
-  vehicleType   VehicleType
-  vehicleMake   String
-  vehicleModel  String
-  vehicleYear   Int
-  vehicleColor  String
-  licensePlate  String      @unique
-  isVerified    Boolean     @default(false)
-  isOnline      Boolean     @default(false)
-  currentLat    Float?
-  currentLng    Float?
-  rating        Float       @default(5.0)
-  totalTrips    Int         @default(0)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                String      @id @default(cuid())
+  userId            String      @unique
+  user              User        @relation(fields: [userId], references: [id])
+  licenseNumber     String
+  licenseExpiry     DateTime
+  vehicleType       VehicleType
+  vehicleMake       String
+  vehicleModel      String
+  vehicleYear       Int
+  vehicleColor      String
+  licensePlate      String      @unique
+  isVerified        Boolean     @default(false)
+  isOnline          Boolean     @default(false)
+  currentLat        Float?
+  currentLng        Float?
+  currentLocationId String?
+  currentLocation   Location?   @relation("DriverCurrentLocation", fields: [currentLocationId], references: [id])
+  rating            Float       @default(5.0)
+  totalTrips        Int         @default(0)
+  farePerKm         Float       @default(12.0)  // Default ₹12/km
+  baseFare          Float       @default(30.0)  // Base fare for first km
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
   rides           Ride[]
   earnings        DriverEarning[]
